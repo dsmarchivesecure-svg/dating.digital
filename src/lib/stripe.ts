@@ -28,7 +28,7 @@ let stripeClient: Stripe | null = null;
  */
 export function getStripe(): Stripe {
   if (!stripeClient) {
-    const key = process.env.STRIPE_SECRET_KEY;
+    const key = process.env.STRIPE_SECRET_KEY?.trim();
     if (!key) throw new Error("Variable d'environnement STRIPE_SECRET_KEY manquante");
     stripeClient = new Stripe(key);
   }

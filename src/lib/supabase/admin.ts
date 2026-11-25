@@ -14,7 +14,7 @@ import { SUPABASE_URL } from "./config";
  * @returns Un client Supabase avec tous les droits.
  */
 export function createAdminClient() {
-  const secretKey = process.env.SUPABASE_SECRET_KEY;
+  const secretKey = process.env.SUPABASE_SECRET_KEY?.trim();
   if (!secretKey) {
     throw new Error("Variable d'environnement SUPABASE_SECRET_KEY manquante");
   }

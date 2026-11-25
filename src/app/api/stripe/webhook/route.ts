@@ -12,7 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * @returns 200 si traité (ou ignoré), 400 si la signature est invalide, 500 pour que Stripe réessaie.
  */
 export async function POST(request: NextRequest) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
   const signature = request.headers.get("stripe-signature");
   if (!secret || !signature) {
     console.error("[webhook] Secret ou signature manquant");
