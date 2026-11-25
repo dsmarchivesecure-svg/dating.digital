@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { isPremiumActive } from "@/lib/stripe";
-import { createClient } from "@/lib/supabase/server";
+import { CheckoutBanner } from "@/components/checkout-banner";
+import { SiteHeader } from "@/components/site-header";
+import { Button } from "@/components/ui/button";
+import { creditsLabel, getViewer } from "@/lib/viewer";
 
 import { Generator } from "./generator";
 
@@ -14,39 +16,34 @@ export const instant = false;
 
 /**
  * Page /app : les deux outils IA. Réservée aux utilisateurs connectés.
+ * @param searchParams - Paramètres d'URL (?checkout=success au retour de Stripe).
  * @returns La page avec le générateur, ou une redirection vers /login.
  */
-export default async function AppPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default async function AppPage({ searchParams }: PageProps<"/app">) {
+  const { checkout, reason } = await searchParams;
+  const { user, profile, premium } = await getViewer();
   if (!user) redirect("/login");
 
-  // Résumé des crédits (lecture via RLS : uniquement son propre profil)
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("free_opener_left, free_analysis_left, pack_credits, subscription_status, current_period_end")
-    .eq("id", user.id)
-    .single();
-  if (error) console.error("[app] Lecture du profil impossible :", error.message);
-
-  let credits = "";
-  if (profile) {
-    credits = isPremiumActive(profile.subscription_status, profile.current_period_end)
-      ? "Premium · unlimited"
-      : `Free: ${profile.free_opener_left} opener · ${profile.free_analysis_left} analysis · Pack: ${profile.pack_credits}`;
-  }
-
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-5 py-10">
-      <header className="flex items-center justify-between">
-        <Link href="/" className="text-xl font-bold tracking-tight">
-          Dating<span className="text-primary">.digital</span>
-        </Link>
-        <span className="text-xs text-muted-foreground">{user.email}</span>
-      </header>
-      <Generator initialCredits={credits} />
-    </main>
+    <>
+      <SiteHeader signedIn />
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-5 pb-16 pt-4">
+        <CheckoutBanner status={checkout} reason={reason} />
+        <Generator initialCredits={creditsLabel(profile, premium)} />
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6 text-sm text-muted-foreground">
+          <span className="truncate">Signed in as {user.email}</span>
+          <div className="flex gap-2">
+            {!premium && (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/pricing">Get more credits</Link>
+              </Button>
+            )}
+            <form action="/auth/signout" method="post">
+              <Button type="submit" variant="ghost" size="sm">Sign out</Button>
+            </form>
+          </div>
+        </div>
+      </main>
+    </>
   );
 }

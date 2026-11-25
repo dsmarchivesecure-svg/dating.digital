@@ -152,7 +152,7 @@ export function Generator({ initialCredits }: { initialCredits: string }) {
           {error.detail && <p className="font-mono text-xs opacity-70">Code: {error.detail}</p>}
           {error.code === "no_credits" && (
             <Button asChild size="sm" className="self-start">
-              <Link href="/">See plans</Link>
+              <Link href="/pricing">See plans</Link>
             </Button>
           )}
         </div>

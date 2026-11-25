@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   const origin = new URL(request.url).origin;
   const back = (status: string, reason?: string) =>
     NextResponse.redirect(
-      `${origin}/?checkout=${status}${reason ? `&reason=${encodeURIComponent(reason)}` : ""}`,
+      `${origin}/pricing?checkout=${status}${reason ? `&reason=${encodeURIComponent(reason)}` : ""}`,
       303,
     );
   // Étape en cours : affichée (sans aucune donnée secrète) en cas d'erreur, pour le diagnostic
@@ -73,8 +73,8 @@ export async function POST(request: NextRequest) {
       customer: customerId,
       client_reference_id: user.id,
       metadata: { user_id: user.id, offer },
-      success_url: `${origin}/?checkout=success`,
-      cancel_url: `${origin}/?checkout=cancel`,
+      success_url: `${origin}/app?checkout=success`,
+      cancel_url: `${origin}/pricing?checkout=cancel`,
     };
 
     const session =

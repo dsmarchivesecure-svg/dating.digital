@@ -1,133 +1,191 @@
 import Link from "next/link";
-import { Crown, MessageCircleHeart, Sparkles } from "lucide-react";
+import { ClipboardPaste, MessageCircleHeart, Send, Sparkles, Wand2 } from "lucide-react";
 
+import { CheckoutBanner } from "@/components/checkout-banner";
+import { PricingCards } from "@/components/pricing-cards";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { isPremiumActive } from "@/lib/stripe";
-import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/viewer";
 
-// Page liée à l'utilisateur connecté : générée à chaque visite (pas de pré-rendu)
+// Page liée à l'utilisateur connecté (en-tête, boutons) : générée à chaque visite
 export const instant = false;
 
-/** Messages affichés au retour de la page de paiement Stripe (?checkout=…). */
-const CHECKOUT_MESSAGES: Record<string, string> = {
-  success: "Payment received! Your account will update within a few seconds — refresh if needed.",
-  cancel: "Payment cancelled. You have not been charged.",
-  "already-premium": "You are already a Premium member.",
-  error: "Something went wrong with the payment. Please try again.",
+/** Exemple réel de résultat (profil fictif), affiché pour montrer le produit. */
+const EXAMPLE = {
+  profile:
+    "Emma, 29. Architect in Lyon. Weekend hiker, terrible at karaoke but I still sing Abba. Looking for someone who can recommend a good book and doesn't mind my cat judging them.",
+  openers: [
+    {
+      tone: "😄 Funny",
+      message:
+        "Terrible at karaoke but committed to Abba is exactly the confidence I respect. Does your cat judge the singing too, or only the guests who can't recommend a good book?",
+    },
+    {
+      tone: "💬 Sincere",
+      message:
+        "Hi Emma, a weekend hiker who designs buildings during the week sounds like a great balance. What's your favorite trail around Lyon?",
+    },
+  ],
 };
 
+const STEPS = [
+  { icon: ClipboardPaste, title: "Paste", text: "Copy their profile — or your own bio — from any dating app." },
+  { icon: Wand2, title: "Generate", text: "Our AI reads the details and writes in seconds." },
+  { icon: Send, title: "Send", text: "Pick your favourite, tweak it if you like, and copy it into the app." },
+];
+
+const FAQ = [
+  {
+    q: "Which dating apps does it work with?",
+    a: "All of them — Tinder, Bumble, Hinge and others. You simply paste text, so it works with any app.",
+  },
+  {
+    q: "Is it really free to try?",
+    a: "Yes. Every account gets one free opener generation and one free profile analysis. No credit card needed.",
+  },
+  {
+    q: "Does the AI talk to my matches for me?",
+    a: "No. It suggests messages and improvements; you stay in control of what you send.",
+  },
+  {
+    q: "Which languages are supported?",
+    a: "The AI answers in the language of the profile you paste — English, French, Spanish and more.",
+  },
+];
+
 /**
- * Page temporaire : vérifie le design (Étape 1), la connexion (Étape 2) et les paiements (Étape 3).
- * Elle sera remplacée par la vraie landing page à l'Étape 6.
- * @param searchParams - Paramètres d'URL (?checkout=success|cancel|…).
- * @returns L'accueil, avec l'état de connexion, les crédits et les boutons d'achat.
+ * Page d'accueil publique (landing page).
+ * @param searchParams - Paramètres d'URL (?checkout=… après un paiement).
+ * @returns La landing page.
  */
 export default async function Home({ searchParams }: PageProps<"/">) {
   const { checkout, reason } = await searchParams;
-  const checkoutMessage = typeof checkout === "string" ? CHECKOUT_MESSAGES[checkout] : undefined;
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Lecture du profil : le RLS garantit qu'on ne voit que le sien
-  let profile: {
-    free_opener_left: number;
-    free_analysis_left: number;
-    pack_credits: number;
-    subscription_status: string | null;
-    current_period_end: string | null;
-  } | null = null;
-  if (user) {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("free_opener_left, free_analysis_left, pack_credits, subscription_status, current_period_end")
-      .eq("id", user.id)
-      .single();
-    if (error) console.error("[home] Lecture du profil impossible :", error.message);
-    profile = data;
-  }
-  const premium = profile ? isPremiumActive(profile.subscription_status, profile.current_period_end) : false;
+  const { user, premium } = await getViewer();
+  const signedIn = Boolean(user);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-10 px-6 py-16">
-      <div className="text-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
-          <Sparkles className="size-3.5" /> Setup check — Step 4
-        </span>
-        <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">
-          Dating<span className="text-primary">.digital</span>
-        </h1>
-        <p className="mt-3 text-muted-foreground">Better openers. Better profile. More matches.</p>
-      </div>
+    <>
+      <SiteHeader signedIn={signedIn} />
 
-      {checkoutMessage && (
-        <p role="status" className="w-full rounded-lg bg-secondary p-4 text-center text-sm text-secondary-foreground">
-          {checkoutMessage}
-          {typeof reason === "string" && (
-            <span className="mt-1 block font-mono text-xs opacity-70">Code: {reason.slice(0, 80)}</span>
-          )}
-        </p>
-      )}
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-24 px-5 pb-20 pt-8">
+        <CheckoutBanner status={checkout} reason={reason} />
 
-      <div className="grid w-full gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <MessageCircleHeart className="size-6 text-primary" />
-            <CardTitle>Opener generator</CardTitle>
-            <CardDescription>3 personalised first messages from any profile.</CardDescription>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader>
-            <Sparkles className="size-6 text-primary" />
-            <CardTitle>Profile analyzer</CardTitle>
-            <CardDescription>A score out of 100, 5 tips and a rewritten bio.</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {user ? (
-        <div className="flex w-full flex-col items-center gap-3 rounded-lg bg-muted p-5 text-center">
-          <p className="text-sm">
-            Signed in as <span className="font-semibold">{user.email}</span>
+        {/* Accroche */}
+        <section className="flex flex-col items-center gap-6 text-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
+            <Sparkles className="size-3.5" /> AI dating assistant
+          </span>
+          <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">
+            Never send a boring <span className="text-primary">first message</span> again.
+          </h1>
+          <p className="max-w-xl text-lg text-muted-foreground">
+            Paste a dating profile and get 3 personalised openers in seconds. Paste your own bio and get an honest
+            score — plus a better version.
           </p>
-          {profile && (
-            <p className="text-sm text-muted-foreground">
-              Free: {profile.free_opener_left} opener · {profile.free_analysis_left} analysis · Pack credits:{" "}
-              {profile.pack_credits}
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+            <Button asChild size="lg">
+              <Link href="/app">{signedIn ? "Open the app" : "Try it free"}</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/pricing">See pricing</Link>
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">2 free generations · No credit card · Works with any app</p>
+        </section>
+
+        {/* Exemple */}
+        <section className="grid gap-4 rounded-3xl bg-muted p-5 sm:p-8 md:grid-cols-2">
+          <div className="flex flex-col gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Example · their profile</p>
+            <p className="rounded-2xl bg-background p-5 text-sm leading-relaxed">{EXAMPLE.profile}</p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Your openers</p>
+            {EXAMPLE.openers.map((o) => (
+              <div key={o.tone} className="rounded-2xl bg-background p-5">
+                <p className="mb-1.5 text-sm font-semibold text-primary">{o.tone}</p>
+                <p className="text-sm leading-relaxed">{o.message}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Les deux outils */}
+        <section className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-3 rounded-2xl border border-border p-6">
+            <MessageCircleHeart className="size-7 text-primary" />
+            <h2 className="text-xl font-semibold">Opener generator</h2>
+            <p className="text-muted-foreground">
+              Three first messages in three tones — funny, sincere and original — each built on real details from
+              their profile, and each ending with an easy way to reply.
             </p>
-          )}
-          <Button asChild size="lg" className="w-full">
-            <Link href="/app">Open the app</Link>
+          </div>
+          <div className="flex flex-col gap-3 rounded-2xl border border-border p-6">
+            <Sparkles className="size-7 text-primary" />
+            <h2 className="text-xl font-semibold">Profile analyzer</h2>
+            <p className="text-muted-foreground">
+              A score out of 100, five concrete tips ranked by impact, and a rewritten bio that keeps your voice and
+              your real story.
+            </p>
+          </div>
+        </section>
+
+        {/* Comment ça marche */}
+        <section className="flex flex-col gap-8">
+          <h2 className="text-center text-3xl font-bold tracking-tight">How it works</h2>
+          <ol className="grid gap-4 md:grid-cols-3">
+            {STEPS.map((step, i) => (
+              <li key={step.title} className="flex flex-col gap-2 rounded-2xl bg-muted p-6">
+                <span className="flex size-10 items-center justify-center rounded-full bg-background text-primary">
+                  <step.icon className="size-5" />
+                </span>
+                <p className="font-semibold">
+                  {i + 1}. {step.title}
+                </p>
+                <p className="text-sm text-muted-foreground">{step.text}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* Prix */}
+        <section className="flex flex-col items-center gap-8">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold tracking-tight">Simple pricing</h2>
+            <p className="mt-2 text-muted-foreground">Start free. Pay only if it helps.</p>
+          </div>
+          <PricingCards signedIn={signedIn} premium={premium} />
+        </section>
+
+        {/* Questions fréquentes */}
+        <section className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+          <h2 className="text-center text-3xl font-bold tracking-tight">Questions</h2>
+          <div className="flex flex-col divide-y divide-border rounded-2xl border border-border">
+            {FAQ.map((item) => (
+              <details key={item.q} className="group p-5">
+                <summary className="cursor-pointer list-none font-medium">
+                  <span className="flex items-center justify-between gap-4">
+                    {item.q}
+                    <span className="text-primary transition group-open:rotate-45">+</span>
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm text-muted-foreground">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        {/* Appel final */}
+        <section className="flex flex-col items-center gap-5 rounded-3xl bg-primary px-6 py-12 text-center text-primary-foreground">
+          <h2 className="text-3xl font-bold tracking-tight">Your next match deserves a better “hey”.</h2>
+          <Button asChild size="lg" variant="secondary">
+            <Link href="/app">{signedIn ? "Open the app" : "Try it free"}</Link>
           </Button>
-          {premium ? (
-            <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
-              <Crown className="size-4" /> Premium active
-            </p>
-          ) : (
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
-              <form action="/api/checkout" method="post">
-                <input type="hidden" name="offer" value="premium" />
-                <Button type="submit" variant="secondary" className="w-full">Go Premium — €9.99/month</Button>
-              </form>
-              <form action="/api/checkout" method="post">
-                <input type="hidden" name="offer" value="pack" />
-                <Button type="submit" variant="outline" className="w-full">10 credits — €2.99</Button>
-              </form>
-            </div>
-          )}
-          <form action="/auth/signout" method="post">
-            <Button type="submit" variant="ghost" size="sm">Sign out</Button>
-          </form>
-        </div>
-      ) : (
-        <Button size="lg" asChild>
-          <Link href="/login">Sign in</Link>
-        </Button>
-      )}
-    </main>
+        </section>
+      </main>
+
+      <SiteFooter />
+    </>
   );
 }
