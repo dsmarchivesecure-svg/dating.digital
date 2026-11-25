@@ -24,7 +24,7 @@ const CHECKOUT_MESSAGES: Record<string, string> = {
  * @returns L'accueil, avec l'état de connexion, les crédits et les boutons d'achat.
  */
 export default async function Home({ searchParams }: PageProps<"/">) {
-  const { checkout } = await searchParams;
+  const { checkout, reason } = await searchParams;
   const checkoutMessage = typeof checkout === "string" ? CHECKOUT_MESSAGES[checkout] : undefined;
 
   const supabase = await createClient();
@@ -66,6 +66,9 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       {checkoutMessage && (
         <p role="status" className="w-full rounded-lg bg-secondary p-4 text-center text-sm text-secondary-foreground">
           {checkoutMessage}
+          {typeof reason === "string" && (
+            <span className="mt-1 block font-mono text-xs opacity-70">Code: {reason.slice(0, 80)}</span>
+          )}
         </p>
       )}
 

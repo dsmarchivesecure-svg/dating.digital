@@ -1,3 +1,4 @@
+import Stripe from "stripe";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { CURRENCY, OFFERS, getStripe, isPremiumActive } from "@/lib/stripe";
@@ -12,7 +13,13 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function POST(request: NextRequest) {
   const origin = new URL(request.url).origin;
-  const back = (status: string) => NextResponse.redirect(`${origin}/?checkout=${status}`, 303);
+  const back = (status: string, reason?: string) =>
+    NextResponse.redirect(
+      `${origin}/?checkout=${status}${reason ? `&reason=${encodeURIComponent(reason)}` : ""}`,
+      303,
+    );
+  // Étape en cours : affichée (sans aucune donnée secrète) en cas d'erreur, pour le diagnostic
+  let step = "auth";
 
   try {
     // 1. L'utilisateur doit être connecté
@@ -26,6 +33,7 @@ export async function POST(request: NextRequest) {
     if (offer !== "premium" && offer !== "pack") return back("error");
 
     // 2. Lecture du profil (côté serveur, jamais depuis le navigateur)
+    step = "profile";
     const admin = createAdminClient();
     const { data: profile, error: profileError } = await admin
       .from("profiles")
@@ -34,7 +42,7 @@ export async function POST(request: NextRequest) {
       .single();
     if (profileError || !profile) {
       console.error("[checkout] Profil introuvable :", profileError?.message);
-      return back("error");
+      return back("error", `profile-${profileError?.code ?? "missing"}`);
     }
 
     // Pas de double abonnement
@@ -43,6 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Client Stripe : créé une fois, puis réutilisé
+    step = "customer";
     const stripe = getStripe();
     let customerId = profile.stripe_customer_id;
     if (!customerId) {
@@ -59,6 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Création de la session de paiement
+    step = "session";
     const common = {
       customer: customerId,
       client_reference_id: user.id,
@@ -103,7 +113,13 @@ export async function POST(request: NextRequest) {
     if (!session.url) throw new Error("Stripe n'a pas renvoyé d'URL de paiement");
     return NextResponse.redirect(session.url, 303);
   } catch (error) {
-    console.error("[checkout] Erreur :", error);
-    return back("error");
+    console.error(`[checkout] Erreur à l'étape ${step} :`, error);
+    const detail =
+      error instanceof Stripe.errors.StripeError
+        ? `${error.type}${error.code ? `-${error.code}` : ""}`
+        : error instanceof Error && error.message.includes("manquante")
+          ? "missing-env"
+          : "unknown";
+    return back("error", `${step}-${detail}`);
   }
 }
