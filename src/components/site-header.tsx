@@ -18,9 +18,14 @@ export function SiteHeader({ signedIn }: { signedIn: boolean }) {
           <Link href="/pricing">Pricing</Link>
         </Button>
         {signedIn ? (
-          <Button asChild size="sm">
-            <Link href="/app">Open app</Link>
-          </Button>
+          <>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/account">Account</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/app">Open app</Link>
+            </Button>
+          </>
         ) : (
           <Button asChild variant="outline" size="sm">
             <Link href="/login">Sign in</Link>
