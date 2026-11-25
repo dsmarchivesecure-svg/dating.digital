@@ -25,7 +25,7 @@ set search_path = ''
 as $$
 begin
   if p_amount <= 0 or p_amount > 100 then
-    raise exception 'Montant de crédits invalide : %', p_amount;
+    raise exception 'invalid amount';
   end if;
 
   -- Mémorise l'événement ; s'il existe déjà, on s'arrête là
@@ -41,7 +41,7 @@ begin
   set pack_credits = pack_credits + p_amount
   where id = p_user_id;
   if not found then
-    raise exception 'Profil introuvable : %', p_user_id;
+    raise exception 'profile not found';
   end if;
 
   return true;
