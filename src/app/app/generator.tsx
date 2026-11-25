@@ -67,7 +67,7 @@ export function Generator({ initialCredits }: { initialCredits: string }) {
   const [kind, setKind] = useState<Kind>("opener");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<{ code: string; message: string } | null>(null);
+  const [error, setError] = useState<{ code: string; message: string; detail?: string } | null>(null);
   const [result, setResult] = useState<OpenerResult | AnalysisResult | null>(null);
   const [resultKind, setResultKind] = useState<Kind | null>(null);
 
@@ -149,6 +149,7 @@ export function Generator({ initialCredits }: { initialCredits: string }) {
       {error && (
         <div role="alert" className="flex flex-col gap-2 rounded-lg bg-secondary p-4 text-sm text-secondary-foreground">
           <p>{error.message}</p>
+          {error.detail && <p className="font-mono text-xs opacity-70">Code: {error.detail}</p>}
           {error.code === "no_credits" && (
             <Button asChild size="sm" className="self-start">
               <Link href="/">See plans</Link>

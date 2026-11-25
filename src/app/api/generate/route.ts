@@ -15,8 +15,26 @@ const MAX_LENGTH = 3000;
  * @param message - Message affiché à l'utilisateur (anglais, comme le site).
  * @returns La réponse HTTP.
  */
-function fail(status: number, code: string, message: string) {
-  return NextResponse.json({ error: { code, message } }, { status });
+function fail(status: number, code: string, message: string, detail?: string) {
+  return NextResponse.json({ error: { code, message, detail } }, { status });
+}
+
+/**
+ * Résume une erreur IA en un code court, sans aucune donnée secrète (pour le diagnostic).
+ * @param error - L'erreur levée lors de l'appel à Claude.
+ * @returns Par exemple "AuthenticationError-401" ou "Error-missing-env".
+ */
+function describeAiError(error: unknown): string {
+  if (error instanceof Anthropic.APIError) {
+    const type = (error.error as { error?: { type?: string } } | undefined)?.error?.type;
+    return `${error.constructor.name}-${error.status ?? "?"}${type ? `-${type}` : ""}`;
+  }
+  if (error instanceof Error) {
+    if (error.message.includes("manquante")) return "missing-env";
+    if (error instanceof SyntaxError) return "bad-json";
+    return error.message.slice(0, 60);
+  }
+  return "unknown";
 }
 
 /**
@@ -86,7 +104,12 @@ export async function POST(request: NextRequest) {
     if (error instanceof Anthropic.RateLimitError || error instanceof Anthropic.InternalServerError) {
       return fail(503, "busy", "Our AI is busy right now. Please try again in a minute — you weren't charged.");
     }
-    return fail(500, "ai", "The AI couldn't answer this time. Please try again — you weren't charged.");
+    return fail(
+      500,
+      "ai",
+      "The AI couldn't answer this time. Please try again — you weren't charged.",
+      describeAiError(error),
+    );
   }
 
   // 5. Historique (une erreur ici ne doit pas faire perdre le résultat à l'utilisateur)
