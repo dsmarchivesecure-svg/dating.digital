@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Check, Copy, Loader2, MessageCircleHeart, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ function CopyButton({ text }: { text: string }) {
  * @returns L'interface interactive.
  */
 export function Generator({ initialCredits }: { initialCredits: string }) {
+  const router = useRouter();
   const [kind, setKind] = useState<Kind>("opener");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -93,6 +95,8 @@ export function Generator({ initialCredits }: { initialCredits: string }) {
         setResult(data.result);
         setResultKind(kind);
       }
+      // Recharge les données du serveur : le compteur de crédits affiché se met à jour
+      router.refresh();
     } catch {
       setError({ code: "network", message: "Network error. Check your connection and try again." });
     } finally {
