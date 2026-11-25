@@ -55,7 +55,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-10 px-6 py-16">
       <div className="text-center">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
-          <Sparkles className="size-3.5" /> Setup check — Step 3
+          <Sparkles className="size-3.5" /> Setup check — Step 4
         </span>
         <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">
           Dating<span className="text-primary">.digital</span>
@@ -100,6 +100,9 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               {profile.pack_credits}
             </p>
           )}
+          <Button asChild size="lg" className="w-full">
+            <Link href="/app">Open the app</Link>
+          </Button>
           {premium ? (
             <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
               <Crown className="size-4" /> Premium active
@@ -108,7 +111,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
               <form action="/api/checkout" method="post">
                 <input type="hidden" name="offer" value="premium" />
-                <Button type="submit" className="w-full">Go Premium — €9.99/month</Button>
+                <Button type="submit" variant="secondary" className="w-full">Go Premium — €9.99/month</Button>
               </form>
               <form action="/api/checkout" method="post">
                 <input type="hidden" name="offer" value="pack" />
